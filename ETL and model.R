@@ -1,5 +1,9 @@
 # install.packages("pacman")
 # install.packages("rmarkdown",repo="https://cloud.r-project.org")
+
+# Things to add
+# new.env()
+# read data straight from kaggle
 library(pacman)
 pacman::p_load(rattle,stringr,magrittr,rmarkdown,knitr,ROCR,ggplot2)
 
@@ -16,54 +20,32 @@ x <- read.csv("HR_comma_sep.csv"
 x$id <- 1:dim(x)[1]
 
 
-x.class <- read.csv("x_score_all class.csv")
-table(x.class$ada)
-
-# Score 10 "new" rows
-new.10 <- read.csv("new.10.csv",header=F,stringsAsFactors = F)
-names(new.10) <- c(names(x),"deleteme")
-
-new.10$promotion_last_5years <- as.character(new.10$promotion_last_5years)
-new.10$Work_accident <- as.character(new.10$Work_accident)
-new.10$left <- as.character(new.10$left)
-str(new.10)
-str(x)
-
-new.10$deleteme<-NULL
-
-
-# Scoring
-new.10.scored <- predict(crs$ada, new.10, type="prob")[,2]
-
-y <- read.csv("x_score_all.csv",header=T,stringsAsFactors = F)
-z <- read.csv("x_score_all class.csv",header=T,stringsAsFactors = F)
-
-y$class <- z$ada
-max(y[y$class==0,"ada"])
-min(y[y$class==1,"ada"])
-
-
-##names(x[,which(names(x)=="sales")]) names(x[which(names(x)=="sales")])<-"sector"
-seed <- 42 
 crs$dataset <- x
-str(crs$dataset)
-set.seed(seed) 
+set.seed(42) 
 crs$nobs <- nrow(crs$dataset) # 14999 observations 
+# Create sample, validate, testing datasets with 70%/15%/15% split
 crs$sample <- crs$train <- sample(nrow(crs$dataset), 0.7*crs$nobs) # 10499 observations
 crs$validate <- sample(setdiff(seq_len(nrow(crs$dataset)), crs$train), 0.15*crs$nobs) # 2249 observations
 crs$test <- setdiff(setdiff(seq_len(nrow(crs$dataset)), crs$train), crs$validate) # 2251 observations
+
+# Independent variables
 crs$input <- c("satisfaction_level", "last_evaluation", "number_project", "average_montly_hours",
                "time_spend_company", "Work_accident", "promotion_last_5years", "sales",
                "salary")
 
+# Define which are numeric
 crs$numeric <- c("satisfaction_level", "last_evaluation", "number_project", "average_montly_hours",
                  "time_spend_company")
 
+# Define which are categoric
 crs$categoric <- c("Work_accident", "promotion_last_5years", "sales", "salary")
 
 crs$target  <- "left"
+
+# Set ID var
 crs$ident   <- "id"
 
+# Run adaboost model; 50 iterations
 crs$ada <- ada::ada(left ~ .,
                     data=crs$dataset[crs$train,c(crs$input, crs$target)],
                     control=rpart::rpart.control(maxdepth=30,
@@ -81,6 +63,7 @@ print(sort(names(listAdaVarsUsed(crs$ada))))
 cat('\nFrequency of variables actually used:\n')
 print(listAdaVarsUsed(crs$ada))
 
+# Scoring the validation dataset
 crs$pr <- predict(crs$ada, newdata=crs$dataset[crs$validate, c(crs$input, crs$target)], type="prob")[,2]
 
 no.miss   <- na.omit(crs$dataset[crs$validate, c(crs$input, crs$target)]$left)
