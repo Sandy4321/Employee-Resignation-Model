@@ -85,22 +85,7 @@ title(main="Precision/Recall Plot  x [validate]",
       sub=paste("Rattle", format(Sys.time(), "%Y-%b-%d %H:%M:%S"), Sys.info()["user"]))
 grid()
 
-# Generate an ROC Curve for the ada model on x [validate].
-crs$pr <- predict(crs$ada, newdata=crs$dataset[crs$validate, c(crs$input, crs$target)], type="prob")[,2]
 
-# Remove observations with missing target.
-
-no.miss   <- na.omit(crs$dataset[crs$validate, c(crs$input, crs$target)]$left)
-miss.list <- attr(no.miss, "na.action")
-attributes(no.miss) <- NULL
-
-if (length(miss.list))
-{
-  pred <- prediction(crs$pr[-miss.list], no.miss)
-} else
-{
-  pred <- prediction(crs$pr, no.miss)
-}
 
 pe <- performance(pred, "tpr", "fpr")
 au <- performance(pred, "auc")@y.values[[1]]
@@ -114,22 +99,3 @@ p <- p + geom_line(data=data.frame(), aes(x=c(0,1), y=c(0,1)), colour="grey")
 p <- p + annotate("text", x=0.50, y=0.00, hjust=0, vjust=0, size=5,
                   label=paste("AUC =", round(au, 2)))
 print(p)
-
-# Calculate the area under the curve for the plot.
-
-
-# Remove observations with missing target.
-
-no.miss   <- na.omit(crs$dataset[crs$validate, c(crs$input, crs$target)]$left)
-miss.list <- attr(no.miss, "na.action")
-attributes(no.miss) <- NULL
-
-if (length(miss.list))
-{
-  pred <- prediction(crs$pr[-miss.list], no.miss)
-} else
-{
-  pred <- prediction(crs$pr, no.miss)
-}
-performance(pred, "auc")
-
